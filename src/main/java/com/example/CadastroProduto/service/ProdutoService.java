@@ -2,7 +2,12 @@ package com.example.CadastroProduto.service;
 
 import com.example.CadastroProduto.entities.Produto;
 import com.example.CadastroProduto.repositories.ProdutoRepository;
+import com.example.CadastroProduto.service.exceptions.DatabaseException;
+import com.example.CadastroProduto.service.exceptions.ResourceNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PutMapping;
 
@@ -20,7 +25,7 @@ public class ProdutoService {
 
     public Produto findById(Long id) {
         Optional<Produto> obj = repository.findById(id);
-        return obj.get();
+        return obj.orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
     public Produto insert(Produto obj) {
@@ -28,6 +33,32 @@ public class ProdutoService {
     }
 
     public void delete(Long id) {
-        repository.deleteById(id);
+        try {
+            repository.deleteById(id);
+        }
+        catch (EmptyResultDataAccessException e) {
+            throw new ResourceNotFoundException(id);
+        }
+        catch (DataIntegrityViolationException e) {
+            throw new DatabaseException(e.getMessage());
+        }
+    }
+
+    public Produto update(Long id, Produto obj) {
+        try {
+            Produto entity = repository.getReferenceById(id);
+            updateData(entity, obj);
+            return repository.save(entity);
+        }
+        catch (EntityNotFoundException e) {
+            throw new ResourceNotFoundException(id);
+        }
+    }
+
+    private void updateData(Produto entity, Produto obj) {
+        entity.setNome(obj.getNome());
+        entity.setPreco(obj.getPreco());
+        entity.setCodigoBarra(obj.getCodigoBarra());
+        entity.setStatus(obj.getStatus());
     }
 }
